@@ -1,11 +1,13 @@
 package health.services;
 
+import health.models.Clinic;
 import health.models.Doctor;
 import health.models.auth.User;
 import health.repos.DoctorRepo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -24,5 +26,9 @@ public class DoctorService {
 
     public Optional<Doctor> getDoctorById(Long id) {
         return doctorRepository.findById(id);
+    }
+
+    public List<Doctor> getDoctorsByClinic(Clinic clinic) {
+        return doctorRepository.getDoctorsByClinic(clinic);
     }
 }

@@ -1,8 +1,9 @@
 package health.auth.services;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
+import health.models.Clinic;
+import health.models.Customer;
+import health.repos.ClinicRepo;
+import health.repos.CustomerRepo;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,33 +24,58 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class AuthenticationService {
     private final UserRepo userRepo;
+    private final CustomerRepo customerRepo;
+    private final ClinicRepo clinicRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
-    public AuthenticationResponse register(RegisterRequest request) {
-        UserBuilder userBuilder = User.builder()
-                .email(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .role(Role.CUSTOMER);
-        User user = userBuilder.build();
-        userRepo.save(user);
+    public AuthenticationResponse registerCustomer(RegisterRequest request, Customer customer) {
+        User user =  registerUser(request, Role.CUSTOMER);
+        String jwtToken = jwtService.generateToken(user);
+        customer.setUser(user);
+        customerRepo.save(customer);
+        return AuthenticationResponse.builder()
+                .token(jwtToken)
+                .build();
+    }
+
+   public AuthenticationResponse registerClinic(RegisterRequest request, Clinic clinic) {
+       User user = registerUser(request, Role.CLINIC);
+       String jwtToken = jwtService.generateToken(user);
+       clinic.setUser(user);
+       clinicRepo.save(clinic);
+       return AuthenticationResponse.builder()
+               .token(jwtToken)
+               .build();
+    }
+
+    public AuthenticationResponse registerDoctor(RegisterRequest request) {
+        User user =  registerUser(request, Role.DOCTOR);
         String jwtToken = jwtService.generateToken(user);
         return AuthenticationResponse.builder()
                 .token(jwtToken)
                 .build();
     }
 
-   
+    public User registerUser(RegisterRequest request, Role role){
+        UserBuilder userBuilder = User.builder()
+                .email(request.getEmail())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(role);
+        User user = userBuilder.build();
+        user = userRepo.save(user);
+        return user;
+    }
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
+                        request.getEmail(),
                         request.getPassword()
                 )
         );
-        User user = userRepo.findByUsername(request.getUsername())
+        User user = userRepo.findByEmail(request.getEmail())
                 .orElseThrow(null);
         String jwtToken = jwtService.generateToken(user);
         return AuthenticationResponse.builder()
@@ -57,10 +83,8 @@ public class AuthenticationService {
                 .build();
     }
 
-
-     public User getCurrentUser(){
+    public User getCurrentUser(){
         UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        User user = userRepo.getUserByUsername(userDetails.getUsername());
-        return user;
+        return userRepo.getUserByEmail(userDetails.getUsername());
     }
 }

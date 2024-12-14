@@ -13,13 +13,16 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import org.springframework.lang.Nullable;
 
 @Entity
 @Table(name = "customers")
 @Getter
 @Setter
+@Builder(toBuilder = true)
 public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,7 +30,7 @@ public class Customer {
 
     @OneToOne(optional = false)
     @JoinColumn(name = "_user")
-    private User creator;
+    private User user;
 
     @Column(nullable = false)
     private String firstName;
@@ -35,22 +38,18 @@ public class Customer {
     @Column(nullable = false)
     private String lastName;
 
+    @Nullable
     @Min(value = 1, message = "Height must be greater than 0")
-    @Column(nullable = false)
     private Integer age;
 
+    @Nullable
     @Min(value = 1, message = "Height must be greater than 0")
-    @Column(nullable = false)
     private Integer weight; 
 
-    @Column(nullable = false)
     private Gender gender;
 
+    @Nullable
     @Min(value = 1, message = "Height must be greater than 0")
-    @Column(nullable = false)
     private Integer height;
-    
-    @Column(nullable = false, unique = true)
-    private String email;   
 
 }

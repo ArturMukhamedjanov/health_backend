@@ -33,8 +33,8 @@ public class SecurityConfiguration {
                 .csrf()
                 .disable()
                 .authorizeHttpRequests()
-                    .antMatchers("/auth/checkAdmin*").hasAuthority("ADMIN")
-                    .antMatchers("/auth/register/accept/*").hasAuthority("ADMIN")
+                    .antMatchers("/user/register/**").permitAll()
+                    .antMatchers("/user/login").permitAll()
                     .antMatchers("/auth/checkToken").authenticated()
                     .antMatchers("/auth/user").authenticated()
                     .antMatchers("/auth/**").permitAll()
@@ -51,22 +51,13 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // Разрешенные источники
         configuration.setAllowedOriginPatterns(List.of("*")); // Используйте setAllowedOrigins(List.of("*")) если не требуется allowCredentials
-        
-        // Разрешенные методы
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        
         // Разрешенные заголовки
         configuration.setAllowedHeaders(List.of("*"));
-        
-        configuration.setAllowCredentials(false); // Установите true, если вам нужно разрешить учетные данные и используйте setAllowedOriginPatterns
-
+        configuration.setAllowCredentials(true); // Установите true, если вам нужно разрешить учетные данные и используйте setAllowedOriginPatterns
         configuration.setExposedHeaders(List.of("ErrMessage"));
-
         configuration.setMaxAge(3600L);
-
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

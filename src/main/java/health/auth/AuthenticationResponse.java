@@ -1,5 +1,6 @@
 package health.auth;
 
+ import health.models.auth.Role;
  import lombok.AllArgsConstructor;
  import lombok.Builder;
  import lombok.Data;
@@ -11,4 +12,5 @@ package health.auth;
  @AllArgsConstructor
  public class AuthenticationResponse {
      private String token;
+     private Role role;
  }

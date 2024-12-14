@@ -1,16 +1,15 @@
 package health.controllers;
 
 import health.auth.AuthenticationRequest;
-import health.auth.AuthenticationResponse;
 import health.auth.RegisterRequest;
 import health.auth.services.AuthenticationService;
 import health.models.Clinic;
 import health.models.Customer;
+import health.models.auth.Role;
 import health.models.dto.ClinicDto;
 import health.models.dto.CustomerDto;
 import health.models.mapper.ClinicMapper;
 import health.models.mapper.CustomerMapper;
-import health.services.CustomerService;
 import health.services.UserService;
 import lombok.RequiredArgsConstructor;
 import javax.servlet.http.Cookie;
@@ -21,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/user")
@@ -33,68 +33,68 @@ public class UserController {
     private final AuthenticationService authenticationService;
 
     @PostMapping("/register/customer")
-    public ResponseEntity<String> registerCustomer(
-            @RequestBody CustomerDto customerDto,
+    public ResponseEntity<LoginResponse> registerCustomer(
+            @Valid @RequestBody CustomerDto customerDto,
             HttpServletResponse response
     ){
         if(!validateCustomer(customerDto)){
-            return ResponseEntity.badRequest().body("Invalid customer data");
+            return ResponseEntity.badRequest().body(null);
         }
-        if(userService.getUserByEmail(customerDto.email().get()).isPresent()){
-            return ResponseEntity.badRequest().body("User with that email already registered");
+        if(userService.getUserByEmail(customerDto.email()).isPresent()){
+            return ResponseEntity.badRequest().body(null);
         }
         Customer customer = customerMapper.mapFromDto(customerDto);
         var registerRequest = RegisterRequest.builder()
-                .email(customerDto.email().get())
-                .password(customerDto.password().get())
+                .email(customerDto.email())
+                .password(customerDto.password())
                 .build();
         var authResponse = authenticationService.registerCustomer(registerRequest, customer);
         response.addCookie(createCookie(authResponse.getToken()));
-        return ResponseEntity.ok(authResponse.getToken());
+        return ResponseEntity.ok(LoginResponse.builder().role(Role.CUSTOMER).build());
     }
 
     @PostMapping("/register/clinic")
-    public ResponseEntity<String> registerClinic(
-            @RequestBody ClinicDto clinicDto,
+    public ResponseEntity<LoginResponse> registerClinic(
+            @Valid @RequestBody ClinicDto clinicDto,
             HttpServletResponse response
     ){
         if(!validateClinic(clinicDto)){
-            return ResponseEntity.badRequest().body("Invalid clinic data");
+            return ResponseEntity.badRequest().body(null);
         }
-        if(userService.getUserByEmail(clinicDto.email().get()).isPresent()){
-            return ResponseEntity.badRequest().body("User with that email already registered");
+        if(userService.getUserByEmail(clinicDto.email()).isPresent()){
+            return ResponseEntity.badRequest().body(null);
         }
-        Clinic clinic = clinicMapper.fromDto(clinicDto);
+        Clinic clinic = clinicMapper.mapFromDto(clinicDto);
         var registerRequest = RegisterRequest.builder()
-                .email(clinicDto.email().get())
-                .password(clinicDto.password().get())
+                .email(clinicDto.email())
+                .password(clinicDto.password())
                 .build();
         var authResponse = authenticationService.registerClinic(registerRequest, clinic);
         response.addCookie(createCookie(authResponse.getToken()));
-        return ResponseEntity.ok(authResponse.getToken());
+        return ResponseEntity.ok(LoginResponse.builder().role(Role.CLINIC).build());
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginUser(
+    public ResponseEntity<LoginResponse> loginUser(
             @RequestBody AuthenticationRequest authenticationRequest,
             HttpServletResponse response
     ){
         var authResponse = authenticationService.authenticate(authenticationRequest);
         response.addCookie(createCookie(authResponse.getToken()));
-        return ResponseEntity.ok("successfull");
+        return ResponseEntity.ok(LoginResponse.builder().role(authResponse.getRole()).build());
     }
 
     private boolean validateCustomer(CustomerDto customerDto){
-        return customerDto.email().isPresent()
-                && customerDto.password().isPresent()
-                && customerDto.firstName().isPresent()
-                && customerDto.lastName().isPresent();
+        return customerDto.email()!= null
+                && customerDto.password() != null
+                && customerDto.firstName() != null
+                && customerDto.lastName() != null;
     }
 
     private boolean validateClinic(ClinicDto clinicDto){
-        return clinicDto.email().isPresent()
-                && clinicDto.password().isPresent()
-                && clinicDto.name().isPresent();
+        return clinicDto.email() != null
+                && clinicDto.password() != null
+                && clinicDto.name() != null;
     }
 
     private Cookie createCookie(String token){

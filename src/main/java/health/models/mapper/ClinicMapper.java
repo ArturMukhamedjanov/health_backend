@@ -4,24 +4,26 @@ import health.models.Clinic;
 import health.models.dto.ClinicDto;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
-
 @Component
 public class ClinicMapper {
 
-    public Clinic fromDto(ClinicDto dto){
+    public Clinic mapFromDto(ClinicDto dto){
         var builder =  Clinic.builder();
-        dto.name().ifPresent(builder::name);
-        dto.description().ifPresent(builder::description);
+        if(dto.name() != null){
+            builder.name(dto.name());
+        }
+        if(dto.description() != null){
+            builder.description(dto.description());
+        }
         return builder.build();
     }
 
-    public ClinicDto toDto(Clinic clinic){
+    public ClinicDto mapToDto(Clinic clinic){
         return ClinicDto.builder()
-                .id(Optional.of(clinic.getId()))
-                .userId(Optional.of(clinic.getUser().getId()))
-                .name(Optional.ofNullable(clinic.getName()))
-                .description(Optional.ofNullable(clinic.getDescription()))
+                .id(clinic.getId())
+                .userId(clinic.getUser().getId())
+                .name(clinic.getName())
+                .description(clinic.getDescription())
                 .build();
     }
 }

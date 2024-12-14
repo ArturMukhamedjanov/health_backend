@@ -5,17 +5,15 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Table;
-import javax.validation.constraints.Min;
 
 import health.models.auth.User;
 
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
+import javax.validation.constraints.Min;
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.lang.Nullable;
 
 @Entity
@@ -23,6 +21,8 @@ import org.springframework.lang.Nullable;
 @Getter
 @Setter
 @Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class Customer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,17 +39,17 @@ public class Customer {
     private String lastName;
 
     @Nullable
-    @Min(value = 1, message = "Height must be greater than 0")
+    @Min(value = 1, message = "Age must be greater than 0")
     private Integer age;
 
     @Nullable
-    @Min(value = 1, message = "Height must be greater than 0")
+    @Min(value = 1, message = "Age must be greater than 0")
     private Integer weight; 
 
     private Gender gender;
 
     @Nullable
-    @Min(value = 1, message = "Height must be greater than 0")
+    @Min(value = 1, message = "Age must be greater than 0")
     private Integer height;
 
 }

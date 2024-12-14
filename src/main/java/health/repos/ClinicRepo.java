@@ -8,4 +8,5 @@ import java.util.Optional;
 
 public interface ClinicRepo extends JpaRepository<Clinic, Long> {
     Optional<Clinic> findClinicByUser(User user);
+
 }

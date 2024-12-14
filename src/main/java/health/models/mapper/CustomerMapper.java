@@ -11,25 +11,37 @@ public class CustomerMapper {
 
     public Customer mapFromDto(CustomerDto customerDto) {
         var builder =  Customer.builder();
-        customerDto.firstName().ifPresent(builder::firstName);
-        customerDto.lastName().ifPresent(builder::lastName);
-        customerDto.age().ifPresent(builder::age);
-        customerDto.weight().ifPresent(builder::weight);
-        customerDto.gender().ifPresent(builder::gender);
-        customerDto.height().ifPresent(builder::height);
+        if(customerDto.firstName() != null){
+            builder.firstName(customerDto.firstName());
+        }
+        if(customerDto.lastName() != null){
+            builder.lastName(customerDto.lastName());
+        }
+        if(customerDto.age() != null){
+            builder.age(customerDto.age());
+        }
+        if(customerDto.weight() != null){
+            builder.weight(customerDto.weight());
+        }
+        if(customerDto.gender() != null){
+            builder.gender(customerDto.gender());
+        }
+        if(customerDto.height() != null){
+            builder.height(customerDto.height());
+        }
         return builder.build();
     }
 
     public CustomerDto mapToDto(Customer customer) {
         return CustomerDto.builder()
-                .id(Optional.of(customer.getId()))
-                .userId(Optional.ofNullable(customer.getUser().getId()))
-                .firstName(Optional.ofNullable(customer.getFirstName()))
-                .lastName(Optional.ofNullable(customer.getLastName()))
-                .age(Optional.ofNullable(customer.getAge()))
-                .weight(Optional.ofNullable(customer.getWeight()))
-                .gender(Optional.ofNullable(customer.getGender()))
-                .height(Optional.ofNullable(customer.getHeight()))
+                .id(customer.getId())
+                .userId(customer.getUser().getId())
+                .firstName(customer.getFirstName())
+                .lastName(customer.getLastName())
+                .age(customer.getAge())
+                .weight(customer.getWeight())
+                .gender(customer.getGender())
+                .height(customer.getHeight())
                 .build();
     }
 

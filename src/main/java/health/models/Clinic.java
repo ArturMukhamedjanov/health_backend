@@ -1,9 +1,7 @@
 package health.models;
 
 import health.models.auth.User;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import javax.persistence.*;
 
@@ -12,6 +10,8 @@ import javax.persistence.*;
 @Getter
 @Setter
 @Builder(toBuilder = true)
+@NoArgsConstructor
+@AllArgsConstructor
 public class Clinic {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

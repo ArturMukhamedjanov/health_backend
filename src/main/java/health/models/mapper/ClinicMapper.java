@@ -22,6 +22,7 @@ public class ClinicMapper {
         return ClinicDto.builder()
                 .id(clinic.getId())
                 .userId(clinic.getUser().getId())
+                .email(clinic.getUser().getEmail())
                 .name(clinic.getName())
                 .description(clinic.getDescription())
                 .build();

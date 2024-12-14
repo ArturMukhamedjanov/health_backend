@@ -36,6 +36,7 @@ public class CustomerMapper {
         return CustomerDto.builder()
                 .id(customer.getId())
                 .userId(customer.getUser().getId())
+                .email(customer.getUser().getEmail())
                 .firstName(customer.getFirstName())
                 .lastName(customer.getLastName())
                 .age(customer.getAge())

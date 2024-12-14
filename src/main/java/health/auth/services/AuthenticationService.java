@@ -2,8 +2,10 @@ package health.auth.services;
 
 import health.models.Clinic;
 import health.models.Customer;
+import health.models.Doctor;
 import health.repos.ClinicRepo;
 import health.repos.CustomerRepo;
+import health.repos.DoctorRepo;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,12 +22,14 @@ import health.models.auth.User.UserBuilder;
 import health.repos.UserRepo;
 import lombok.AllArgsConstructor;
 
+
 @Service
 @AllArgsConstructor
 public class AuthenticationService {
     private final UserRepo userRepo;
     private final CustomerRepo customerRepo;
     private final ClinicRepo clinicRepo;
+    private final DoctorRepo doctorRepo;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -37,6 +41,7 @@ public class AuthenticationService {
         customerRepo.save(customer);
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .role(Role.CUSTOMER)
                 .build();
     }
 
@@ -47,14 +52,18 @@ public class AuthenticationService {
        clinicRepo.save(clinic);
        return AuthenticationResponse.builder()
                .token(jwtToken)
+               .role(Role.CLINIC)
                .build();
     }
 
-    public AuthenticationResponse registerDoctor(RegisterRequest request) {
+    public AuthenticationResponse registerDoctor(RegisterRequest request, Doctor doctor) {
         User user =  registerUser(request, Role.DOCTOR);
         String jwtToken = jwtService.generateToken(user);
+        doctor.setUser(user);
+        doctorRepo.save(doctor);
         return AuthenticationResponse.builder()
                 .token(jwtToken)
+                .role(Role.DOCTOR)
                 .build();
     }
 

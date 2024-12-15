@@ -11,6 +11,7 @@ public record AppointmentDto(
         Long doctorId,
         Long customerId,
         Long timetableId,
-        Instant start
+        Instant start,
+        String doctorName
 ) {
 }

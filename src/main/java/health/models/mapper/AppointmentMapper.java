@@ -16,6 +16,7 @@ public class AppointmentMapper {
                 .customerId(appointment.getCustomer().getId())
                 .timetableId(appointment.getTimetable().getId())
                 .start(appointment.getTimetable().getStart())
+                .doctorName(appointment.getDoctor().getFirstName() + " " + appointment.getDoctor().getLastName())
                 .build();
     }
 }

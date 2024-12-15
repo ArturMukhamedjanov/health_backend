@@ -90,6 +90,7 @@ public class CustomerController {
                     List<Map<String, Object>> values = group.stream()
                             .map(dto -> {
                                 Map<String, Object> map = new HashMap<>();
+                                map.put("id", dto.id());
                                 map.put("value", dto.value()); // Преобразуем при необходимости
                                 map.put("date", dto.date());  // Преобразуем `Instant` в строку или используйте как есть
                                 return map;

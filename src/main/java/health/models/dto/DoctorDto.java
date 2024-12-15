@@ -5,6 +5,7 @@ import lombok.Builder;
 @Builder(toBuilder = true)
 public record DoctorDto(
         Long id,
+        Long clinicId,
         Long userId,
         String email,
         String password,

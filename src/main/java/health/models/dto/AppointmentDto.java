@@ -5,12 +5,12 @@ import lombok.Builder;
 import java.time.Instant;
 
 @Builder(toBuilder = true)
-public record AnalysisDto(
+public record AppointmentDto(
         Long id,
+        Long clinicId,
+        Long doctorId,
         Long customerId,
-        String name,
-        String value,
-        String unit,
-        Instant date
+        Long timetableId,
+        Instant start
 ) {
 }

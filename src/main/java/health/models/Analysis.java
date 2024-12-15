@@ -30,6 +30,9 @@ public class Analysis {
     private String value;
 
     @Column(nullable = false)
+    private String unit;
+
+    @Column(nullable = false)
     private Instant date;
 
 }

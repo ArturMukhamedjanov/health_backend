@@ -59,6 +59,11 @@ public class TimetableService {
         updateTimetable(timetable);
     }
 
+    public void deleteFreeTimetables(Doctor doctor){
+        List<Timetable> freeTimetables = getFreeTimetablesByDoctor(doctor);
+        timetableRepository.deleteAll(freeTimetables);
+    }
+
     public List<Timetable> addOrUpdateFromRawTimetable(List<Instant> workingOurs, Doctor doctor) {
         List<Timetable> result = new ArrayList<>();
         for (Instant workingHour : workingOurs){

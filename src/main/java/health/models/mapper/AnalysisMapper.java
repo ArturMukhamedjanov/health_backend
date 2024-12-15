@@ -17,6 +17,9 @@ public class AnalysisMapper {
         if(dto.date() != null){
             builder.date(dto.date());
         }
+        if(dto.unit() != null){
+            builder.unit(dto.unit());
+        }
         return builder.build();
     }
 
@@ -26,6 +29,7 @@ public class AnalysisMapper {
                 .customerId(analysis.getCustomer().getId())
                 .name(analysis.getName())
                 .value(analysis.getValue())
+                .unit(analysis.getUnit())
                 .date(analysis.getDate())
                 .build();
     }

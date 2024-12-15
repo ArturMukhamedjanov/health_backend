@@ -4,7 +4,6 @@ import health.models.Customer;
 import health.models.dto.CustomerDto;
 import org.springframework.stereotype.Component;
 
-import java.util.Optional;
 
 @Component
 public class CustomerMapper {

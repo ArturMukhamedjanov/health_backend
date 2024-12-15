@@ -5,16 +5,15 @@ import health.auth.services.AuthenticationService;
 import health.models.Clinic;
 import health.models.Timetable;
 import health.models.auth.Role;
+import health.models.dto.AppointmentDto;
 import health.models.dto.ClinicDto;
 import health.models.dto.DoctorDto;
 import health.models.dto.TimetableDto;
+import health.models.mapper.AppointmentMapper;
 import health.models.mapper.ClinicMapper;
 import health.models.mapper.DoctorMapper;
 import health.models.mapper.TimetableMapper;
-import health.services.ClinicService;
-import health.services.DoctorService;
-import health.services.TimetableService;
-import health.services.UserService;
+import health.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +23,9 @@ import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -37,9 +38,11 @@ public class ClinicController {
     private final ClinicService clinicService;
     private final DoctorService doctorService;
     private final TimetableService timetableService;
+    private final AppointmentService appointmentService;
     private final ClinicMapper clinicMapper;
     private final DoctorMapper doctorMapper;
     private final TimetableMapper timetableMapper;
+    private final AppointmentMapper appointmentMapper;
 
     // Получение информации о клинике для текущего пользователя
     @GetMapping()
@@ -103,7 +106,7 @@ public class ClinicController {
         return ResponseEntity.ok(doctorDtos);
     }
 
-    @GetMapping("/doctor/{id}")
+    @GetMapping("/doctor/{doctorId}")
     public ResponseEntity<DoctorDto> getDoctor(@PathVariable Long doctorId){
         var currentUser = authenticationService.getCurrentUser();
         var clinic = clinicService.getClinicByUser(currentUser);
@@ -144,13 +147,47 @@ public class ClinicController {
         if(doctorOpt.isEmpty() || doctorOpt.get().getClinic() != clinic.get()){
             return ResponseEntity.notFound().build();
         }
+        var reservedTimetables = timetableService.getReservedTimetablesByDoctor(doctorOpt.get());
+        Set<Instant> workingOursSet = new HashSet<>(workingOurs);
+        reservedTimetables.stream()
+                .map(Timetable::getStart) // Получаем все start из reservedTimetables
+                .filter(start -> !workingOursSet.contains(start)) // Проверяем, что start нет в workingOursSet
+                .forEach(workingOurs::add); // Добавляем отсутствующие элементы в workingOurs
         if(hasOverlappingWorkingHours(workingOurs)){
             return ResponseEntity.badRequest().build();
         }
-        //TODO delete non reserved times
+        timetableService.deleteFreeTimetables(doctorOpt.get());
         List<Timetable> timetables = timetableService.addOrUpdateFromRawTimetable(workingOurs, doctorOpt.get());
         var timetableDtos = timetables.stream().map(timetableMapper::mapToDto).toList();
         return ResponseEntity.ok(timetableDtos);
+    }
+
+    @GetMapping("/doctor/{doctorId}/appointment")
+    public ResponseEntity<List<AppointmentDto>> getDoctorAppointments(@PathVariable Long doctorId){
+        var currentUser = authenticationService.getCurrentUser();
+        var clinic = clinicService.getClinicByUser(currentUser);
+        if (clinic.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var doctorOpt = doctorService.getDoctorById(doctorId);
+        if(doctorOpt.isEmpty() || doctorOpt.get().getClinic() != clinic.get()){
+            return ResponseEntity.notFound().build();
+        }
+        var appointments = appointmentService.getAppointmentsByDoctor(doctorOpt.get());
+        var appointmentDtos = appointments.stream().map(appointmentMapper::mapToDto).toList();
+        return ResponseEntity.ok(appointmentDtos);
+    }
+
+    @GetMapping("/appointment")
+    public ResponseEntity<List<AppointmentDto>> getAppointments(){
+        var currentUser = authenticationService.getCurrentUser();
+        var clinic = clinicService.getClinicByUser(currentUser);
+        if (clinic.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var appointments = appointmentService.getAppointmentsByClinic(clinic.get());
+        var appointmentDtos = appointments.stream().map(appointmentMapper::mapToDto).toList();
+        return ResponseEntity.ok(appointmentDtos);
     }
 
 

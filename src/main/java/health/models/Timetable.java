@@ -8,7 +8,7 @@ import javax.print.Doc;
 import java.time.Instant;
 
 @Entity
-@Table(name = "timetable")
+@Table(name = "timetables")
 @Getter
 @Setter
 @Builder(toBuilder = true)

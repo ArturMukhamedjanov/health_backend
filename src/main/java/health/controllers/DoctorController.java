@@ -1,21 +1,19 @@
 package health.controllers;
 
 import health.auth.services.AuthenticationService;
+import health.models.Chat;
 import health.models.Doctor;
-import health.models.dto.AppointmentDto;
-import health.models.dto.DoctorDto;
-import health.models.dto.TimetableDto;
-import health.models.mapper.AppointmentMapper;
-import health.models.mapper.DoctorMapper;
-import health.models.mapper.TimetableMapper;
-import health.services.AppointmentService;
-import health.services.DoctorService;
-import health.services.TimetableService;
+import health.models.Message;
+import health.models.auth.Role;
+import health.models.dto.*;
+import health.models.mapper.*;
+import health.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -32,6 +30,11 @@ public class DoctorController {
     private final TimetableMapper timetableMapper;
     private final DoctorService doctorService;
     private final DoctorMapper doctorMapper;
+    private final ChatService chatService;
+    private final ChatMapper chatMapper;
+    private final MessageService messageService;
+    private final MessageMapper messageMapper;
+    private final CustomerService customerService;
 
     // Получение информации о докторе для текущего пользователя
     @GetMapping()
@@ -83,6 +86,85 @@ public class DoctorController {
         var timetable = timetableService.getTimetablesByDoctor(doctor.get());
         var timetableDtos = timetable.stream().map(timetableMapper::mapToDto).collect(Collectors.toList());
         return ResponseEntity.ok(timetableDtos);
+    }
+
+    @GetMapping("/chat")
+    public ResponseEntity<List<ChatDto>> getChats() {
+        var currentUser = authenticationService.getCurrentUser();
+        var doctor = doctorService.getDoctorByUser(currentUser);
+        if (doctor.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<Chat> chats = chatService.getChatsByDoctor(doctor.get());
+        return ResponseEntity.ok(chats.stream().map(chatMapper::mapToDto).toList());
+    }
+
+    @GetMapping("/chat/{chatId}/message")
+    public ResponseEntity<List<MessageDto>> getChatMessages(@PathVariable Long chatId) {
+        var currentUser = authenticationService.getCurrentUser();
+        var doctor = doctorService.getDoctorByUser(currentUser);
+        if (doctor.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var chatOpt = chatService.getChatById(chatId);
+        if (chatOpt.isEmpty() || chatOpt.get().getDoctor().getId() != doctor.get().getId()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<Message> messages = messageService.getMessagesByChat(chatOpt.get());
+        return ResponseEntity.ok(messages.stream().map(messageMapper::mapToDto).toList());
+    }
+
+    @PostMapping("/chat/{customerId}")
+    public ResponseEntity<ChatDto> createChat(@PathVariable Long customerId) {
+        var currentUser = authenticationService.getCurrentUser();
+        var doctor = doctorService.getDoctorByUser(currentUser);
+        if (doctor.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var customerOpt = customerService.getCustomerById(customerId);
+        if (customerOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var appointmentOpt = appointmentService.getAppointmentsByDoctorAndCustomer(doctor.get(), customerOpt.get());
+        if (appointmentOpt.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        var chatOpt = chatService.getChatByDoctorAndCustomer(doctor.get(), customerOpt.get());
+        if (chatOpt.isPresent()) {
+            return ResponseEntity.ok(chatMapper.mapToDto(chatOpt.get()));
+        }
+        var chat = Chat.builder()
+                .customer(customerOpt.get())
+                .doctor(doctor.get())
+                .clinic(doctor.get().getClinic())
+                .build();
+        chat = chatService.saveOrUpdateChat(chat);
+        return ResponseEntity.ok(chatMapper.mapToDto(chat));
+    }
+
+    @PostMapping("/chat/{chatId}/message")
+    public ResponseEntity<List<MessageDto>> createMessage(@PathVariable Long chatId, @RequestBody MessageDto messageDto) {
+        var currentUser = authenticationService.getCurrentUser();
+        var doctor = doctorService.getDoctorByUser(currentUser);
+        if (doctor.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var chatOpt = chatService.getChatById(chatId);
+        if (chatOpt.isEmpty() || chatOpt.get().getDoctor().getId() != doctor.get().getId()) {
+            return ResponseEntity.notFound().build();
+        }
+        if (messageDto.text() == null || messageDto.text().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        var message = Message.builder()
+                .chat(chatOpt.get())
+                .role(Role.DOCTOR)
+                .text(messageDto.text())
+                .sendTime(Instant.now())
+                .build();
+        message = messageService.saveOrUpdateMessage(message);
+        var messages = messageService.getMessagesByChat(chatOpt.get());
+        return ResponseEntity.ok(messages.stream().map(messageMapper::mapToDto).toList());
     }
 
     public Doctor mergeDoctors(Doctor oldDoctor, DoctorDto newDoctor) {

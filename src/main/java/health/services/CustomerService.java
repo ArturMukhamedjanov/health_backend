@@ -13,6 +13,10 @@ import java.util.Optional;
 public class CustomerService {
     private final CustomerRepo customerRepo;
 
+    public Optional<Customer> getCustomerById(Long id) {
+        return customerRepo.findById(id);
+    }
+
     public Optional<Customer> getCustomerByUser(User currentUser) {
         return customerRepo.findCustomerByUser(currentUser);
     }

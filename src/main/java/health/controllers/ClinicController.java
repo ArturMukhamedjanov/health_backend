@@ -3,16 +3,11 @@ package health.controllers;
 import health.auth.RegisterRequest;
 import health.auth.services.AuthenticationService;
 import health.models.Clinic;
+import health.models.Message;
 import health.models.Timetable;
 import health.models.auth.Role;
-import health.models.dto.AppointmentDto;
-import health.models.dto.ClinicDto;
-import health.models.dto.DoctorDto;
-import health.models.dto.TimetableDto;
-import health.models.mapper.AppointmentMapper;
-import health.models.mapper.ClinicMapper;
-import health.models.mapper.DoctorMapper;
-import health.models.mapper.TimetableMapper;
+import health.models.dto.*;
+import health.models.mapper.*;
 import health.services.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -39,10 +34,15 @@ public class ClinicController {
     private final DoctorService doctorService;
     private final TimetableService timetableService;
     private final AppointmentService appointmentService;
+    private final ChatService chatService;
+    private final MessageService messageService;
+
     private final ClinicMapper clinicMapper;
     private final DoctorMapper doctorMapper;
     private final TimetableMapper timetableMapper;
     private final AppointmentMapper appointmentMapper;
+    private final ChatMapper chatMapper;
+    private final MessageMapper messageMapper;
 
     // Получение информации о клинике для текущего пользователя
     @GetMapping()
@@ -190,8 +190,52 @@ public class ClinicController {
         return ResponseEntity.ok(appointmentDtos);
     }
 
+    @GetMapping("/doctor/{doctorId}/chat")
+    public ResponseEntity<List<ChatDto>> getDoctorChats(@PathVariable Long doctorId) {
+        var currentUser = authenticationService.getCurrentUser();
+        var clinic = clinicService.getClinicByUser(currentUser);
+        if (clinic.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
 
-    // Метод логики слияния старой информации клиники с новой
+        var doctorOpt = doctorService.getDoctorById(doctorId);
+        if (doctorOpt.isEmpty() || doctorOpt.get().getClinic().getId() != clinic.get().getId()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        var chats = chatService.getChatsByDoctor(doctorOpt.get());
+        var chatDtos = chats.stream().map(chatMapper::mapToDto).toList();
+        return ResponseEntity.ok(chatDtos);
+    }
+
+    @GetMapping("/chat")
+    public ResponseEntity<List<ChatDto>> getClinicChats() {
+        var currentUser = authenticationService.getCurrentUser();
+        var clinic = clinicService.getClinicByUser(currentUser);
+        if (clinic.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var chats = chatService.getChatsByClinic(clinic.get());
+        var chatDtos = chats.stream().map(chatMapper::mapToDto).toList();
+        return ResponseEntity.ok(chatDtos);
+    }
+
+    @GetMapping("/chat/{chatId}/message")
+    public ResponseEntity<List<MessageDto>> getChatMessages(@PathVariable Long chatId) {
+        var currentUser = authenticationService.getCurrentUser();
+        var clinic = clinicService.getClinicByUser(currentUser);
+        if (clinic.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var chatOpt = chatService.getChatById(chatId);
+        if (chatOpt.isEmpty() || chatOpt.get().getClinic().getId() != clinic.get().getId()) {
+            return ResponseEntity.notFound().build();
+        }
+        var messages = messageService.getMessagesByChat(chatOpt.get());
+        var messageDtos = messages.stream().map(messageMapper::mapToDto).toList();
+        return ResponseEntity.ok(messageDtos);
+    }
+
     public Clinic mergeClinics(Clinic oldClinic, ClinicDto newClinic) {
         if (newClinic.name() != null) {
             oldClinic.setName(newClinic.name());

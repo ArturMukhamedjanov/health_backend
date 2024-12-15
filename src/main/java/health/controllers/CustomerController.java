@@ -155,6 +155,26 @@ public class CustomerController {
         return ResponseEntity.ok(appointments.stream().map(appointmentMapper::mapToDto).toList());
     }
 
+    @DeleteMapping("/appointment/{appointmentId}")
+    public ResponseEntity<Void> deleteAppointment(@PathVariable Long appointmentId) {
+        var currentUser = authenticationService.getCurrentUser();
+        var customer = customerService.getCustomerByUser(currentUser);
+        if (customer.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var appointmentOpt = appointmentService.getAppointmentById(appointmentId);
+        if (appointmentOpt.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        var appointment = appointmentOpt.get();
+        if (appointment.getCustomer().getId()!= customer.get().getId()) {
+            return ResponseEntity.notFound().build();
+        }
+        timetableService.freeTimetable(appointment.getTimetable());
+        appointmentService.deleteAppointment(appointment);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/appointment/{timetableId}")
     public ResponseEntity<AppointmentDto> addAppointment(@PathVariable Long timetableId) {
         var currentUser = authenticationService.getCurrentUser();

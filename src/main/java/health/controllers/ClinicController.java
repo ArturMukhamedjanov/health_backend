@@ -72,7 +72,7 @@ public class ClinicController {
     }
 
     @PostMapping("/doctor")
-    public ResponseEntity<LoginResponse> registerDoctor(@Valid @RequestBody DoctorDto doctorDto, HttpServletResponse response){
+    public ResponseEntity<Void> registerDoctor(@Valid @RequestBody DoctorDto doctorDto, HttpServletResponse response){
         var currentUser = authenticationService.getCurrentUser();
         var clinic = clinicService.getClinicByUser(currentUser);
         if (clinic.isEmpty()) {
@@ -90,8 +90,7 @@ public class ClinicController {
                 .email(doctorDto.email())
                 .password(doctorDto.password())
                 .build(), doctor);
-        response.addCookie(createCookie(res.getToken()));
-        return ResponseEntity.ok(LoginResponse.builder().role(Role.DOCTOR).build());
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/doctor")

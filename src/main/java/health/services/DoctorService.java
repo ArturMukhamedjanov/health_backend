@@ -31,4 +31,8 @@ public class DoctorService {
     public List<Doctor> getDoctorsByClinic(Clinic clinic) {
         return doctorRepository.getDoctorsByClinic(clinic);
     }
+
+    public List<Doctor> getAllDoctors() {
+        return doctorRepository.findAll();
+    }
 }

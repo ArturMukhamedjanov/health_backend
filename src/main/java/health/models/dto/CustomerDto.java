@@ -5,7 +5,6 @@ import health.models.Gender;
 
 import javax.validation.constraints.Positive;
 
-
 @Builder(toBuilder = true)
 public record CustomerDto(
         Long id,

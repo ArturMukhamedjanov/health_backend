@@ -2,33 +2,25 @@ package health.controllers;
 
 import health.auth.RegisterRequest;
 import health.auth.services.AuthenticationService;
-import health.models.Clinic;
-import health.models.Message;
 import health.models.Timetable;
-import health.models.auth.Role;
 import health.models.dto.*;
 import health.models.mapper.*;
 import health.services.*;
-import lombok.RequiredArgsConstructor;
+import health.utils.EntityMergeUtil;
+import health.utils.TimetableUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
-@RequiredArgsConstructor
 @RestController
 @RequestMapping("/clinic")
-public class ClinicController {
+public class ClinicController extends BaseController {
 
-    private final AuthenticationService authenticationService;
     private final UserService userService;
     private final ClinicService clinicService;
     private final DoctorService doctorService;
@@ -44,237 +36,237 @@ public class ClinicController {
     private final ChatMapper chatMapper;
     private final MessageMapper messageMapper;
 
-    // Получение информации о клинике для текущего пользователя
+    public ClinicController(
+            AuthenticationService authenticationService,
+            UserService userService,
+            ClinicService clinicService,
+            DoctorService doctorService,
+            TimetableService timetableService,
+            AppointmentService appointmentService,
+            ChatService chatService,
+            MessageService messageService,
+            ClinicMapper clinicMapper,
+            DoctorMapper doctorMapper,
+            TimetableMapper timetableMapper,
+            AppointmentMapper appointmentMapper,
+            ChatMapper chatMapper,
+            MessageMapper messageMapper) {
+        super(authenticationService);
+        this.userService = userService;
+        this.clinicService = clinicService;
+        this.doctorService = doctorService;
+        this.timetableService = timetableService;
+        this.appointmentService = appointmentService;
+        this.chatService = chatService;
+        this.messageService = messageService;
+        this.clinicMapper = clinicMapper;
+        this.doctorMapper = doctorMapper;
+        this.timetableMapper = timetableMapper;
+        this.appointmentMapper = appointmentMapper;
+        this.chatMapper = chatMapper;
+        this.messageMapper = messageMapper;
+    }
+
     @GetMapping()
     public ResponseEntity<ClinicDto> getClinic() {
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var clinicDto = clinicMapper.mapToDto(clinic.get());
-        clinicDto.toBuilder().email(currentUser.getEmail());
-        return ResponseEntity.ok(clinicDto);
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> {
+                    var clinicDto = clinicMapper.mapToDto(clinic);
+                    clinicDto.toBuilder().email(getCurrentUser().getEmail());
+                    return ResponseEntity.ok(clinicDto);
+                }
+        );
     }
 
     @PostMapping
     public ResponseEntity<ClinicDto> updateClinicInfo(@Valid @RequestBody ClinicDto clinicDto) {
-        var currentUser = authenticationService.getCurrentUser();
-        var currentClinic = clinicService.getClinicByUser(currentUser);
-        if (currentClinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var updatedClinic = mergeClinics(currentClinic.get(), clinicDto);
-        updatedClinic = clinicService.updateClinic(updatedClinic);
-        var res = clinicMapper.mapToDto(updatedClinic);
-        res.toBuilder().email(currentUser.getEmail());
-        return ResponseEntity.ok(res);
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> {
+                    var updatedClinic = EntityMergeUtil.mergeClinic(clinic, clinicDto);
+                    updatedClinic = clinicService.updateClinic(updatedClinic);
+                    var res = clinicMapper.mapToDto(updatedClinic);
+                    res.toBuilder().email(getCurrentUser().getEmail());
+                    return ResponseEntity.ok(res);
+                }
+        );
     }
 
     @PostMapping("/doctor")
-    public ResponseEntity<Void> registerDoctor(@Valid @RequestBody DoctorDto doctorDto, HttpServletResponse response){
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        if(!validateDoctor(doctorDto)){
-            return ResponseEntity.badRequest().body(null);
-        }
-        if(userService.getUserByEmail(doctorDto.email()).isPresent()){
-            return ResponseEntity.badRequest().body(null);
-        }
-        var doctor = doctorMapper.mapFromDto(doctorDto);
-        doctor.setClinic(clinic.get());
-        var res = authenticationService.registerDoctor(RegisterRequest.builder()
-                .email(doctorDto.email())
-                .password(doctorDto.password())
-                .build(), doctor);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> registerDoctor(@Valid @RequestBody DoctorDto doctorDto) {
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> {
+                    if (userService.getUserByEmail(doctorDto.email()).isPresent()) {
+                        return badRequest();
+                    }
+                    var doctor = doctorMapper.mapFromDto(doctorDto);
+                    doctor.setClinic(clinic);
+                    authenticationService.registerDoctor(RegisterRequest.builder()
+                            .email(doctorDto.email())
+                            .password(doctorDto.password())
+                            .build(), doctor);
+                    return ResponseEntity.ok().build();
+                }
+        );
     }
 
     @GetMapping("/doctor")
-    public ResponseEntity<List<DoctorDto>> getDoctors(){
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var doctors = doctorService.getDoctorsByClinic(clinic.get());
-        var doctorDtos = doctors.stream().map(doctorMapper::mapToDto).toList();
-        return ResponseEntity.ok(doctorDtos);
+    public ResponseEntity<List<DoctorDto>> getDoctors() {
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> {
+                    var doctors = doctorService.getDoctorsByClinic(clinic);
+                    var doctorDtos = doctors.stream().map(doctorMapper::mapToDto).toList();
+                    return ResponseEntity.ok(doctorDtos);
+                }
+        );
     }
 
     @GetMapping("/doctor/{doctorId}")
-    public ResponseEntity<DoctorDto> getDoctor(@PathVariable Long doctorId){
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var doctorOpt = doctorService.getDoctorById(doctorId);
-        if(doctorOpt.isEmpty() || doctorOpt.get().getClinic() != clinic.get()){
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(doctorMapper.mapToDto(doctorOpt.get()));
+    public ResponseEntity<DoctorDto> getDoctor(@PathVariable Long doctorId) {
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> withEntity(
+                        doctorService::getDoctorById,
+                        doctorId,
+                        doctor -> {
+                            if (!belongsTo(doctor.getClinic().getId(), clinic.getId())) {
+                                return notFound();
+                            }
+                            return ResponseEntity.ok(doctorMapper.mapToDto(doctor));
+                        }
+                )
+        );
     }
 
     @GetMapping("/doctor/{doctorId}/timetable")
-    public ResponseEntity<List<TimetableDto>> getDoctorTimetable(@PathVariable Long doctorId){
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var doctorOpt = doctorService.getDoctorById(doctorId);
-        if(doctorOpt.isEmpty() || doctorOpt.get().getClinic() != clinic.get()){
-            return ResponseEntity.notFound().build();
-        }
-        var timetables = timetableService.getTimetablesByDoctor(doctorOpt.get());
-        var timetableDtos = timetables.stream().map(timetableMapper::mapToDto).toList();
-        return ResponseEntity.ok(timetableDtos);
+    public ResponseEntity<List<TimetableDto>> getDoctorTimetable(@PathVariable Long doctorId) {
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> withEntity(
+                        doctorService::getDoctorById,
+                        doctorId,
+                        doctor -> {
+                            if (!belongsTo(doctor.getClinic().getId(), clinic.getId())) {
+                                return notFound();
+                            }
+                            var timetables = timetableService.getTimetablesByDoctor(doctor);
+                            var timetableDtos = timetables.stream().map(timetableMapper::mapToDto).toList();
+                            return ResponseEntity.ok(timetableDtos);
+                        }
+                )
+        );
     }
 
     @PostMapping("/doctor/{doctorId}/timetable")
-    public ResponseEntity<List<TimetableDto>> setDoctorTimetable(@Valid @RequestBody List<Instant> workingOurs, @PathVariable Long doctorId){
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var doctorOpt = doctorService.getDoctorById(doctorId);
-        if(doctorOpt.isEmpty() || doctorOpt.get().getClinic() != clinic.get()){
-            return ResponseEntity.notFound().build();
-        }
-        var reservedTimetables = timetableService.getReservedTimetablesByDoctor(doctorOpt.get());
-        Set<Instant> workingOursSet = new HashSet<>(workingOurs);
-        reservedTimetables.stream()
-                .map(Timetable::getStart) // Получаем все start из reservedTimetables
-                .filter(start -> !workingOursSet.contains(start)) // Проверяем, что start нет в workingOursSet
-                .forEach(workingOurs::add); // Добавляем отсутствующие элементы в workingOurs
-        if(hasOverlappingWorkingHours(workingOurs)){
-            return ResponseEntity.badRequest().build();
-        }
-        timetableService.deleteFreeTimetables(doctorOpt.get());
-        List<Timetable> timetables = timetableService.addOrUpdateFromRawTimetable(workingOurs, doctorOpt.get());
-        var timetableDtos = timetables.stream().map(timetableMapper::mapToDto).toList();
-        return ResponseEntity.ok(timetableDtos);
+    public ResponseEntity<List<TimetableDto>> setDoctorTimetable(@Valid @RequestBody List<Instant> workingHours, @PathVariable Long doctorId) {
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> withEntity(
+                        doctorService::getDoctorById,
+                        doctorId,
+                        doctor -> {
+                            if (!belongsTo(doctor.getClinic().getId(), clinic.getId())) {
+                                return notFound();
+                            }
+                            var reservedTimetables = timetableService.getReservedTimetablesByDoctor(doctor);
+                            Set<Instant> workingHoursSet = new HashSet<>(workingHours);
+                            reservedTimetables.stream()
+                                    .map(Timetable::getStart)
+                                    .filter(start -> !workingHoursSet.contains(start))
+                                    .forEach(workingHours::add);
+                            if (TimetableUtil.hasOverlappingWorkingHours(workingHours)) {
+                                return badRequest();
+                            }
+                            timetableService.deleteFreeTimetables(doctor);
+                            List<Timetable> timetables = timetableService.addOrUpdateFromRawTimetable(workingHours, doctor);
+                            var timetableDtos = timetables.stream().map(timetableMapper::mapToDto).toList();
+                            return ResponseEntity.ok(timetableDtos);
+                        }
+                )
+        );
     }
 
     @GetMapping("/doctor/{doctorId}/appointment")
-    public ResponseEntity<List<AppointmentDto>> getDoctorAppointments(@PathVariable Long doctorId){
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var doctorOpt = doctorService.getDoctorById(doctorId);
-        if(doctorOpt.isEmpty() || doctorOpt.get().getClinic() != clinic.get()){
-            return ResponseEntity.notFound().build();
-        }
-        var appointments = appointmentService.getAppointmentsByDoctor(doctorOpt.get());
-        var appointmentDtos = appointments.stream().map(appointmentMapper::mapToDto).toList();
-        return ResponseEntity.ok(appointmentDtos);
+    public ResponseEntity<List<AppointmentDto>> getDoctorAppointments(@PathVariable Long doctorId) {
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> withEntity(
+                        doctorService::getDoctorById,
+                        doctorId,
+                        doctor -> {
+                            if (!belongsTo(doctor.getClinic().getId(), clinic.getId())) {
+                                return notFound();
+                            }
+                            var appointments = appointmentService.getAppointmentsByDoctor(doctor);
+                            var appointmentDtos = appointments.stream().map(appointmentMapper::mapToDto).toList();
+                            return ResponseEntity.ok(appointmentDtos);
+                        }
+                )
+        );
     }
 
     @GetMapping("/appointment")
-    public ResponseEntity<List<AppointmentDto>> getAppointments(){
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var appointments = appointmentService.getAppointmentsByClinic(clinic.get());
-        var appointmentDtos = appointments.stream().map(appointmentMapper::mapToDto).toList();
-        return ResponseEntity.ok(appointmentDtos);
+    public ResponseEntity<List<AppointmentDto>> getAppointments() {
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> {
+                    var appointments = appointmentService.getAppointmentsByClinic(clinic);
+                    var appointmentDtos = appointments.stream().map(appointmentMapper::mapToDto).toList();
+                    return ResponseEntity.ok(appointmentDtos);
+                }
+        );
     }
 
     @GetMapping("/doctor/{doctorId}/chat")
     public ResponseEntity<List<ChatDto>> getDoctorChats(@PathVariable Long doctorId) {
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        var doctorOpt = doctorService.getDoctorById(doctorId);
-        if (doctorOpt.isEmpty() || doctorOpt.get().getClinic().getId() != clinic.get().getId()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        var chats = chatService.getChatsByDoctor(doctorOpt.get());
-        var chatDtos = chats.stream().map(chatMapper::mapToDto).toList();
-        return ResponseEntity.ok(chatDtos);
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> withEntity(
+                        doctorService::getDoctorById,
+                        doctorId,
+                        doctor -> {
+                            if (!belongsTo(doctor.getClinic().getId(), clinic.getId())) {
+                                return notFound();
+                            }
+                            var chats = chatService.getChatsByDoctor(doctor);
+                            var chatDtos = chats.stream().map(chatMapper::mapToDto).toList();
+                            return ResponseEntity.ok(chatDtos);
+                        }
+                )
+        );
     }
 
     @GetMapping("/chat")
     public ResponseEntity<List<ChatDto>> getClinicChats() {
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var chats = chatService.getChatsByClinic(clinic.get());
-        var chatDtos = chats.stream().map(chatMapper::mapToDto).toList();
-        return ResponseEntity.ok(chatDtos);
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> {
+                    var chats = chatService.getChatsByClinic(clinic);
+                    var chatDtos = chats.stream().map(chatMapper::mapToDto).toList();
+                    return ResponseEntity.ok(chatDtos);
+                }
+        );
     }
 
     @GetMapping("/chat/{chatId}/message")
     public ResponseEntity<List<MessageDto>> getChatMessages(@PathVariable Long chatId) {
-        var currentUser = authenticationService.getCurrentUser();
-        var clinic = clinicService.getClinicByUser(currentUser);
-        if (clinic.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        var chatOpt = chatService.getChatById(chatId);
-        if (chatOpt.isEmpty() || chatOpt.get().getClinic().getId() != clinic.get().getId()) {
-            return ResponseEntity.notFound().build();
-        }
-        var messages = messageService.getMessagesByChat(chatOpt.get());
-        var messageDtos = messages.stream().map(messageMapper::mapToDto).toList();
-        return ResponseEntity.ok(messageDtos);
+        return withUserEntity(
+                clinicService::getClinicByUser,
+                clinic -> withEntity(
+                        chatService::getChatById,
+                        chatId,
+                        chat -> {
+                            if (!belongsTo(chat.getClinic().getId(), clinic.getId())) {
+                                return notFound();
+                            }
+                            var messages = messageService.getMessagesByChat(chat);
+                            var messageDtos = messages.stream().map(messageMapper::mapToDto).toList();
+                            return ResponseEntity.ok(messageDtos);
+                        }
+                )
+        );
     }
-
-    public Clinic mergeClinics(Clinic oldClinic, ClinicDto newClinic) {
-        if (newClinic.name() != null) {
-            oldClinic.setName(newClinic.name());
-        }
-        if (newClinic.description() != null) {
-            oldClinic.setDescription(newClinic.description());
-        }
-        return oldClinic;
-    }
-
-    public boolean validateDoctor(DoctorDto doctorDto){
-        return doctorDto.email() != null &&
-                doctorDto.password() != null &&
-                doctorDto.firstName() != null &&
-                doctorDto.lastName() != null &&
-                doctorDto.speciality() != null;
-    }
-
-    public static boolean hasOverlappingWorkingHours(List<Instant> workingHours) {
-        if (workingHours == null || workingHours.size() <= 1) {
-            return false;
-        }
-        workingHours.sort(Instant::compareTo);
-        for (int i = 0; i < workingHours.size() - 1; i++) {
-            Instant current = workingHours.get(i);
-            Instant next = workingHours.get(i + 1);
-            if (Duration.between(current, next).toMinutes() < 60) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private Cookie createCookie(String token){
-        Cookie cookie = new Cookie("token", token);
-        cookie.setHttpOnly(false);
-        cookie.setSecure(false);
-        cookie.setPath("/");
-        cookie.setMaxAge(7 * 24 * 60 * 60);
-        return cookie;
-    }
-
 }

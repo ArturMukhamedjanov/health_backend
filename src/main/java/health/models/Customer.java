@@ -9,6 +9,7 @@ import javax.persistence.Table;
 import health.models.auth.User;
 
 import javax.persistence.Id;
+import javax.persistence.Index;
 import javax.persistence.JoinColumn;
 import javax.persistence.OneToOne;
 import javax.validation.constraints.Min;
@@ -17,7 +18,9 @@ import lombok.*;
 import org.springframework.lang.Nullable;
 
 @Entity
-@Table(name = "customers")
+@Table(name = "customers", indexes = {
+    @Index(name = "idx_customer_user", columnList = "_user")
+})
 @Getter
 @Setter
 @Builder(toBuilder = true)

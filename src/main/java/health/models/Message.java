@@ -7,7 +7,11 @@ import javax.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "messages", indexes = {
+    @Index(name = "idx_message_chat", columnList = "chats"),
+    @Index(name = "idx_message_sendtime", columnList = "sendTime"),
+    @Index(name = "idx_message_chat_sendtime", columnList = "chats, sendTime")
+})
 @Getter
 @Setter
 @Builder(toBuilder = true)

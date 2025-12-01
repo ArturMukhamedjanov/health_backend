@@ -6,7 +6,10 @@ import lombok.*;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "clinics")
+@Table(name = "clinics", indexes = {
+    @Index(name = "idx_clinic_user", columnList = "_user"),
+    @Index(name = "idx_clinic_name", columnList = "name")
+})
 @Getter
 @Setter
 @Builder(toBuilder = true)

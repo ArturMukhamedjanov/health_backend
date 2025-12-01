@@ -9,6 +9,7 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
+import javax.persistence.Index;
 import javax.persistence.Table;
 
 import org.springframework.security.core.GrantedAuthority;
@@ -26,7 +27,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name="_user")
+@Table(name="_user", indexes = {
+    @Index(name = "idx_user_email", columnList = "email")
+})
 public class User implements UserDetails {
     @Id
     @GeneratedValue

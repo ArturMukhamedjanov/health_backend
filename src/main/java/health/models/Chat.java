@@ -6,7 +6,12 @@ import javax.persistence.*;
 import java.time.Instant;
 
 @Entity
-@Table(name = "chats")
+@Table(name = "chats", indexes = {
+    @Index(name = "idx_chat_clinic", columnList = "clinics"),
+    @Index(name = "idx_chat_doctor", columnList = "doctors"),
+    @Index(name = "idx_chat_customer", columnList = "customers"),
+    @Index(name = "idx_chat_doctor_customer", columnList = "doctors, customers")
+})
 @Getter
 @Setter
 @Builder(toBuilder = true)

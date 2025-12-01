@@ -8,7 +8,12 @@ import javax.print.Doc;
 import java.time.Instant;
 
 @Entity
-@Table(name = "timetables")
+@Table(name = "timetables", indexes = {
+    @Index(name = "idx_timetable_doctor", columnList = "doctors"),
+    @Index(name = "idx_timetable_start", columnList = "start"),
+    @Index(name = "idx_timetable_reserved", columnList = "reserved"),
+    @Index(name = "idx_timetable_doctor_reserved", columnList = "doctors, reserved")
+})
 @Getter
 @Setter
 @Builder(toBuilder = true)
